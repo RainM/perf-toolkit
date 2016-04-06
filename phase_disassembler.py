@@ -88,17 +88,17 @@ def get_disassemble_llvm_objdump_by_addrs(exe_path, start_addr, end_addr):
         l_ = proc.stdout.readline()
     return instructions
 
-def is_jump_instruction(inst):
+def is_jump(inst):
     return inst.mnemonic[0] == 'j'
 
 def is_conditional_jump(inst):
     return inst.mnemonic[0] == 'j' and inst.mnemonic != 'jmp'
 
 def is_unconditional_jump(inst):
-    return inst.mnemonic == 'jmp'
+    return 'jmp' in inst.mnemonic
 
 def is_last_bb_instruction(inst):
-    return is_jump_instruction(inst) or inst.mnemonic == 'call' or inst.mnemonic == 'ret'
+    return is_jump(inst) or inst.mnemonic == 'call' or inst.mnemonic == 'ret'
 
 def extract_cfg(context, listing):
     lines = []
@@ -115,15 +115,19 @@ def extract_cfg(context, listing):
     while len(bb_to_parse):
         bb = bb_to_parse[0]
         bb_to_parse.remove(bb)
-        if is_jump_instruction(bb.inst[-1]):
+        if is_jump(bb.inst[-1]):
+            #print 'is jump inst:', bb, "inst:", "\n" + '%s' % bb.inst[-1]
             target_addr = bb.inst[-1].target_addr
             old_bb, new_bb = cfg_types.split_bb_at(context, target_addr)
-            if old_bb != new_bb:
-                bb_to_parse.append(new_bb)
-            cfg_types.create_edge_by_bb(context, bb, new_bb, cfg_types.edge.CONDITION_JUMP)
+            if old_bb != None and new_bb != None:
+                if old_bb != new_bb:
+                    bb_to_parse.append(new_bb)
+                #print 'cond jmp:', bb, new_bb
+                #cfg_types.create_edge_by_bb(context, bb, new_bb, cfg_types.edge.CONDITION_JUMP)
 
     all_bbs = cfg_types.all_bbs(context)
     for bb in all_bbs:
+        # not jmp
         if not is_unconditional_jump(bb.inst[-1]):
             end_addr = bb.end()
             next_bb = cfg_types.get_bb_by_addr(context, end_addr + 1)
@@ -134,6 +138,11 @@ def extract_cfg(context, listing):
                 else:
                     type_ = cfg_types.edge.CONTINUE
                 cfg_types.create_edge_by_bb(context, bb, next_bb, type_)
+        if is_jump(bb.inst[-1]):
+            target_addr = bb.inst[-1].target_addr
+            target_bb = cfg_types.get_bb_by_addr(context, target_addr)
+            if target_bb:
+                cfg_types.create_edge_by_bb(context, bb, target_bb, cfg_types.edge.CONDITION_JUMP)
 
 def init_argparser(argparser):
     argparser.add_argument('--executable', dest='executable', required=True)

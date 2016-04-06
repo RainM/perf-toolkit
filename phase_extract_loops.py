@@ -18,13 +18,14 @@ import cfg_types
 
 
 def dominator_functor(context, bb, dominators):
+    print "Dominator:", bb
     predcessors = cfg_types.get_predcessors(context, bb)
     if len(predcessors) == 0:
         dominators[bb] = set([bb])
         return
     current_dominators = set(cfg_types.all_bbs(context))
     for p in predcessors:
-        #print 'Predcessor:', p
+        print "\tPredcessor:", p
         if p in dominators:
             #print ",".join(['%s' % x for x in dominators[p]])
             current_dominators = set(dominators[p]).intersection(set(current_dominators))
@@ -47,6 +48,14 @@ def calculate_dominators(context):
 def calculate_reverse_backedges(context, dominators):
     result = []
     for e in cfg_types.all_edges(context):
+        if e.from_bb not in dominators:
+            print 'Edge:', e
+            print 'no dominators for FROM:', e.from_bb
+            continue
+        if e.to_bb not in dominators:
+            print 'Edge:', e
+            print 'no dominators for TO:  ', e.to_bb
+            continue
         dominators_from = dominators[e.from_bb]
         dominators_to   = dominators[e.to_bb]
         #print 'BackEdge:', e

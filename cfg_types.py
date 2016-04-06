@@ -129,6 +129,7 @@ def split_bb_at(context, addr):
                     #create_edge_by_bb(context, bb, new_bb)
                     return bb, new_bb
             return bb, bb
+    #print 'No bb for addr: 0x%x' % addr
     return None, None
 
 def create_context():
