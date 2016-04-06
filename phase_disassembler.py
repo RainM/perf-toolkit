@@ -30,6 +30,18 @@ def fix_jmp_address(inst):
     inst.args = '0x%x' % target_addr
     inst.target_addr = target_addr
 
+def create_instruction_from_line(line):
+    gd = parse_line(line).groupdict()
+    inst = cfg_types.instruction()
+    inst.mnemonic = gd['mnemonic']
+    inst.args = gd['args'] if 'args' in gd and gd['args'] != None else ''
+    inst.addr = int(gd['addr'], 16)
+    inst.size = len(gd['encoding'])/3
+    inst.encoding = gd['encoding']
+    if inst.mnemonic[0] == 'j':
+        fix_jmp_address(inst)
+    return inst
+        
 def get_disassemble_llvm_objdump(exe_path, routine_name):
     proc = subprocess.Popen(['llvm-objdump-3.4', '-d', exe_path], stdout=subprocess.PIPE)
     l_ = proc.stdout.readline()
@@ -42,15 +54,7 @@ def get_disassemble_llvm_objdump(exe_path, routine_name):
             break
 
         if routine_to_dump:
-            gd = parse_line(l).groupdict()
-            inst = cfg_types.instruction()
-            inst.mnemonic = gd['mnemonic']
-            inst.args = gd['args'] if 'args' in gd and gd['args'] != None else ''
-            inst.addr = int(gd['addr'], 16)
-            inst.size = len(gd['encoding'])/3
-            inst.encoding = gd['encoding']
-            if inst.mnemonic[0] == 'j':
-                fix_jmp_address(inst)
+            inst = create_instruction_from_line(l)
             instructions.append(inst)
 
         g = try_routine_begin(l)
@@ -58,6 +62,29 @@ def get_disassemble_llvm_objdump(exe_path, routine_name):
             if g.group(1) == routine_name:
                 routine_to_dump = True
         
+        l_ = proc.stdout.readline()
+    return instructions
+
+def get_disassemble_llvm_objdump_by_addrs(exe_path, start_addr, end_addr):
+    proc = subprocess.Popen(['llvm-objdump-3.4', '-d', exe_path], stdout=subprocess.PIPE)
+    l_ = proc.stdout.readline()
+    start_regexp = "^[ ]+[0-9a-fA-F]*%s\:.*$" % start_addr
+    end_regexp = "^[ ]+[0-9a-fA-F]*%s\:.*$" % end_addr
+    in_region_to_dump = False
+    instructions = []
+    while l_ != '':
+        l = l_.strip("\r\n")
+        
+        if re.match(start_regexp, l):
+            in_region_to_dump = True
+        if in_region_to_dump:
+            #print l
+            inst = create_instruction_from_line(l)
+            instructions.append(inst)            
+        if re.match(end_regexp, l):
+            while l_ != '':
+                l_ = proc.stdout.readline()
+            break
         l_ = proc.stdout.readline()
     return instructions
 
@@ -81,6 +108,8 @@ def extract_cfg(context, listing):
         if is_last_bb_instruction(inst):
             cfg_types.append_bb(context, current_bb)
             current_bb = cfg_types.basic_block()
+    if len(current_bb.inst) > 0:
+        cfg_types.append_bb(context, current_bb)
 
     bb_to_parse = cfg_types.all_bbs(context)
     while len(bb_to_parse):
@@ -109,8 +138,8 @@ def extract_cfg(context, listing):
 def init_argparser(argparser):
     argparser.add_argument('--executable', dest='executable', required=True)
     argparser.add_argument('--routine', dest='routine', required=False)
-    argparser.add_argument('--start_address')
-    argparser.add_argument('--stop-address')
+    argparser.add_argument('--start-address', dest='start_address')
+    argparser.add_argument('--end-address', dest='end_address')
 
 def init():
     pass
@@ -122,6 +151,10 @@ def get_name():
     return "phase_disassembler"
 
 def do_phase(context):
-    listing = get_disassemble_llvm_objdump(context.options.executable, context.options.routine)
+    listing = None
+    if context.options.routine and context.options.routine != '':
+        listing = get_disassemble_llvm_objdump(context.options.executable, context.options.routine)
+    elif context.options.start_address and context.options.end_address:
+        listing = get_disassemble_llvm_objdump_by_addrs(context.options.executable, context.options.start_address, context.options.end_address)
     extract_cfg(context, listing)
     return True
