@@ -42,8 +42,8 @@ def create_instruction_from_line(line):
         fix_jmp_address(inst)
     return inst
         
-def get_disassemble_llvm_objdump(exe_path, routine_name):
-    proc = subprocess.Popen(['llvm-objdump-3.4', '-d', exe_path], stdout=subprocess.PIPE)
+def get_disassemble_llvm_objdump(objdump_name, exe_path, routine_name):
+    proc = subprocess.Popen([objdump_name, '-d', exe_path], stdout=subprocess.PIPE)
     l_ = proc.stdout.readline()
     routine_to_dump = False
     instructions = []
@@ -65,7 +65,7 @@ def get_disassemble_llvm_objdump(exe_path, routine_name):
         l_ = proc.stdout.readline()
     return instructions
 
-def get_disassemble_llvm_objdump_by_addrs(exe_path, start_addr, end_addr):
+def get_disassemble_llvm_objdump_by_addrs(objdump_name, exe_path, start_addr, end_addr):
     proc = subprocess.Popen(['llvm-objdump-3.4', '-d', exe_path], stdout=subprocess.PIPE)
     l_ = proc.stdout.readline()
     start_regexp = "^[ ]+[0-9a-fA-F]*%s\:.*$" % start_addr
@@ -149,6 +149,7 @@ def init_argparser(argparser):
     argparser.add_argument('--routine', dest='routine', required=False)
     argparser.add_argument('--start-address', dest='start_address')
     argparser.add_argument('--end-address', dest='end_address')
+    argparser.add_argument('--objdump-name', dest='objdump_name', default='llvm-objdump')
 
 def init():
     pass
@@ -162,8 +163,8 @@ def get_name():
 def do_phase(context):
     listing = None
     if context.options.routine and context.options.routine != '':
-        listing = get_disassemble_llvm_objdump(context.options.executable, context.options.routine)
+        listing = get_disassemble_llvm_objdump(context.options.objdump_name, context.options.executable, context.options.routine)
     elif context.options.start_address and context.options.end_address:
-        listing = get_disassemble_llvm_objdump_by_addrs(context.options.executable, context.options.start_address, context.options.end_address)
+        listing = get_disassemble_llvm_objdump_by_addrs(context.options.objdump_name, context.options.executable, context.options.start_address, context.options.end_address)
     extract_cfg(context, listing)
     return True
