@@ -66,7 +66,7 @@ def get_disassemble_llvm_objdump(objdump_name, exe_path, routine_name):
     return instructions
 
 def get_disassemble_llvm_objdump_by_addrs(objdump_name, exe_path, start_addr, end_addr):
-    proc = subprocess.Popen(['llvm-objdump-3.4', '-d', exe_path], stdout=subprocess.PIPE)
+    proc = subprocess.Popen([objdump_name, '-d', exe_path], stdout=subprocess.PIPE)
     l_ = proc.stdout.readline()
     start_regexp = "^[ ]+[0-9a-fA-F]*%s\:.*$" % start_addr
     end_regexp = "^[ ]+[0-9a-fA-F]*%s\:.*$" % end_addr
