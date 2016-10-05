@@ -12,15 +12,14 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-import phase_disassembler_native
-import phase_disassembler_jvm
+import re
+import subprocess
+
+import cfg_types
 
 def init_argparser(argparser):
-    subparsers = argparser.add_subparsers(help='Input format')
-    native_parser = subparsers.add_parser('native')
-    jvm_parser = subparsers.add_parser('jvm')
-    phase_disassembler_native.init_argparser(native_parser)
-    phase_disassembler_jvm.init_argparser(jvm_parser)
+    argparser.add_argument('--compilation_output', dest='compilation_out', required=False)
+    argparser.add_argument('--routine', dest='routine')
 
 def init():
     pass
@@ -29,11 +28,7 @@ def apply_options(options):
     pass
 
 def get_name():
-    return "phase_disassembler"
+    return "phase_disassembler_jvm"
 
 def do_phase(context):
-    if context.options.input_type == 'native':
-        return phase_disassembler_native.do_phase(context)
-    elif context.options.input_type == 'jvm':
-        return phase_disassembler_jvm.do_phase(context)
-    raise Exception("Unknown input type")
+    return True

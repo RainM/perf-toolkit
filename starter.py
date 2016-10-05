@@ -22,7 +22,7 @@ module_names = ['phase_disassembler', 'phase_extract_loops', 'phase_graphviz']
 def main():
     modules = [__import__(x) for x in module_names]
     [x.init() for x in modules]
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(conflict_handler='resolve')
     [x.init_argparser(parser) for x in modules]
     context = cfg_types.create_context()
     context.options = parser.parse_args()
